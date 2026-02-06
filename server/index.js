@@ -6,6 +6,7 @@ const fs = require('fs');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const iconv = require('iconv-lite');
+const { ProxyAgent } = require('proxy-agent');
 
 const app = express();
 const PORT = 3001;
@@ -101,13 +102,17 @@ app.get('/api/ogp', async (req, res) => {
     return res.status(400).send('URL is required');
   }
 
+  const agent = new ProxyAgent();
+
   try {
     const response = await axios.get(targetUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       },
       timeout: 10000,
-      responseType: 'arraybuffer'
+      responseType: 'arraybuffer',
+      httpAgent: agent,
+      httpsAgent: agent
     });
 
     let data = response.data;
