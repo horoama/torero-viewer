@@ -7,22 +7,23 @@ const TrelloCard = ({ card, onClick, labels, members, index }) => {
   const cardLabels = card.idLabels.map(id => labels[id]).filter(Boolean);
   const cardMembers = card.idMembers.map(id => members[id]).filter(Boolean);
 
-  const [ogImage, setOgImage] = useState(null);
+  const [ogData, setOgData] = useState({ imageUrl: null, title: null });
   const isUrl = /^https?:\/\/[^\s]+$/.test(card.name);
 
   useEffect(() => {
     if (isUrl) {
       axios.get(`/api/ogp`, { params: { url: card.name } })
         .then(res => {
-          if (res.data.imageUrl) {
-            setOgImage(res.data.imageUrl);
-          }
+          setOgData(res.data);
         })
         .catch(err => {
           console.error("Failed to fetch OGP", err);
         });
     }
   }, [card.name, isUrl]);
+
+  const ogImage = ogData.imageUrl;
+  const displayTitle = ogData.title || card.name;
 
   // Check if card has any bottom metadata to display
   const hasMetadata = card.desc || card.due || (card.attachments && card.attachments.length > 0) || card.checkItems > 0 || cardMembers.length > 0;
@@ -62,7 +63,7 @@ const TrelloCard = ({ card, onClick, labels, members, index }) => {
           )}
 
           {/* Title */}
-          <h3 className={`${ogImage ? 'text-white font-bold drop-shadow-md' : 'text-[#172b4d]'} text-sm font-normal mb-1 leading-5 break-words`}>{card.name}</h3>
+          <h3 className={`${ogImage ? 'text-white font-bold drop-shadow-md' : 'text-[#172b4d]'} text-sm font-normal mb-1 leading-5 break-words`}>{displayTitle}</h3>
 
           {/* Badges / Members */}
           {hasMetadata && (
