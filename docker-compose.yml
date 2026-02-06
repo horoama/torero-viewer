@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      args:
+        - HTTP_PROXY
+        - HTTPS_PROXY
+        - NO_PROXY
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./server/uploads:/app/server/uploads
