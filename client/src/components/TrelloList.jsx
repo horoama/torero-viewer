@@ -45,10 +45,6 @@ const TrelloList = ({ list, cards, labels, members, onCardClick, index }) => {
             )}
           </Droppable>
 
-          {/* Footer: Add a card */}
-          <div className="flex items-center gap-1.5 p-2 mt-1 hover:bg-[#091e4214] rounded-lg cursor-pointer text-[#44546f] text-sm font-medium transition-colors select-none">
-             <span className="text-lg leading-none pb-0.5">＋</span> Add a card
-          </div>
         </div>
       )}
     </Draggable>

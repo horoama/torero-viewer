@@ -3,6 +3,8 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
+const cheerio = require('cheerio');
 
 const app = express();
 const PORT = 3001;
@@ -78,6 +80,47 @@ app.get('/api/files/:filename', (req, res) => {
       res.status(500).send('Error parsing JSON');
     }
   });
+});
+
+// API: Get OGP Image
+app.get('/api/ogp', async (req, res) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl) {
+    return res.status(400).send('URL is required');
+  }
+
+  try {
+    const response = await axios.get(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Bot/1.0)'
+      },
+      timeout: 5000
+    });
+
+    const $ = cheerio.load(response.data);
+    let ogImage = $('meta[property="og:image"]').attr('content');
+
+    if (!ogImage) {
+      ogImage = $('meta[name="og:image"]').attr('content');
+    }
+    if (!ogImage) {
+      ogImage = $('meta[name="twitter:image"]').attr('content');
+    }
+
+    // Resolve relative URLs
+    if (ogImage && !ogImage.startsWith('http')) {
+        try {
+            ogImage = new URL(ogImage, targetUrl).href;
+        } catch (e) {
+            // Ignore URL parsing errors
+        }
+    }
+
+    res.json({ imageUrl: ogImage || null });
+  } catch (error) {
+    console.error('Error fetching OGP:', error.message);
+    res.json({ imageUrl: null, error: 'Failed to fetch OGP' });
+  }
 });
 
 // Serve static files from client/dist

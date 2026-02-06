@@ -1,5 +1,5 @@
 # Stage 1: Build Frontend
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
@@ -11,7 +11,7 @@ COPY client/ ./
 RUN npm run build
 
 # Stage 2: Backend
-FROM node:18-alpine
+FROM node:22-alpine
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
