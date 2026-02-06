@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const iconv = require('iconv-lite');
 
 const app = express();
 const PORT = 3001;
@@ -82,7 +83,7 @@ app.get('/api/files/:filename', (req, res) => {
   });
 });
 
-// API: Get OGP Image
+// API: Get OGP Image and Metadata
 app.get('/api/ogp', async (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) {
@@ -92,31 +93,89 @@ app.get('/api/ogp', async (req, res) => {
   try {
     const response = await axios.get(targetUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Bot/1.0)'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       },
-      timeout: 5000
+      timeout: 10000,
+      responseType: 'arraybuffer'
     });
 
-    const $ = cheerio.load(response.data);
-    let ogImage = $('meta[property="og:image"]').attr('content');
+    let data = response.data;
+    const contentType = response.headers['content-type'];
 
+    // Simple charset detection from Content-Type
+    let charset = 'utf-8';
+    if (contentType) {
+        const match = contentType.match(/charset=([^;]+)/i);
+        if (match) {
+            charset = match[1].trim();
+        }
+    }
+
+    // Decode if necessary
+    if (charset && !charset.toLowerCase().includes('utf-8')) {
+        try {
+            data = iconv.decode(data, charset);
+        } catch (e) {
+            data = data.toString();
+        }
+    } else {
+        data = data.toString();
+    }
+
+    const $ = cheerio.load(data);
+
+    // Extract Image
+    let ogImage = $('meta[property="og:image"]').attr('content');
     if (!ogImage) {
       ogImage = $('meta[name="og:image"]').attr('content');
     }
     if (!ogImage) {
       ogImage = $('meta[name="twitter:image"]').attr('content');
     }
-
-    // Resolve relative URLs
-    if (ogImage && !ogImage.startsWith('http')) {
-        try {
-            ogImage = new URL(ogImage, targetUrl).href;
-        } catch (e) {
-            // Ignore URL parsing errors
-        }
+    if (!ogImage) {
+        ogImage = $('link[rel="image_src"]').attr('href');
     }
 
-    res.json({ imageUrl: ogImage || null });
+    // Extract Title
+    let title = $('meta[property="og:title"]').attr('content');
+    if (!title) {
+        title = $('title').text();
+    }
+
+    // Extract Description
+    let description = $('meta[property="og:description"]').attr('content');
+    if (!description) {
+        description = $('meta[name="description"]').attr('content');
+    }
+
+    // Extract Favicon
+    let favicon = $('link[rel="icon"]').attr('href');
+    if (!favicon) {
+        favicon = $('link[rel="shortcut icon"]').attr('href');
+    }
+
+    // Helper to resolve relative URLs
+    const resolveUrl = (url) => {
+        if (url && !url.startsWith('http')) {
+            try {
+                return new URL(url, targetUrl).href;
+            } catch (e) {
+                return null;
+            }
+        }
+        return url;
+    };
+
+    ogImage = resolveUrl(ogImage);
+    favicon = resolveUrl(favicon);
+
+    res.json({
+        imageUrl: ogImage || null,
+        title: title || null,
+        description: description || null,
+        favicon: favicon || null
+    });
+
   } catch (error) {
     console.error('Error fetching OGP:', error.message);
     res.json({ imageUrl: null, error: 'Failed to fetch OGP' });
