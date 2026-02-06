@@ -84,8 +84,7 @@ app.get('/api/files/:filename', (req, res) => {
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Handle React routing, return all requests to React app
-// In Express 5, '*' is not valid for path-to-regexp. Use /(.*)/ or similar.
-app.get(/(.*)/, (req, res) => {
+app.get('{/*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
 });
 
