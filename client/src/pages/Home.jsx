@@ -69,7 +69,7 @@ const Home = () => {
               {files.map((file) => (
                 <li key={file.filename} className="py-4 flex justify-between items-center hover:bg-gray-50 px-2 rounded transition">
                   <div className="flex flex-col">
-                    <span className="font-medium text-gray-900">{file.filename.split('-').slice(1).join('-')}</span>
+                    <span className="font-medium text-gray-900">{file.name || file.filename.split('-').slice(1).join('-')}</span>
                     <span className="text-sm text-gray-500">Uploaded: {format(new Date(file.uploadedAt), 'PPP p')}</span>
                   </div>
                   <Link

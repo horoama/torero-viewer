@@ -43,24 +43,35 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 // API: List Files
-app.get('/api/files', (req, res) => {
-  fs.readdir(uploadDir, (err, files) => {
-    if (err) {
-      return res.status(500).send('Unable to scan directory');
-    }
-    // Filter for json files only if needed, but assuming user uploads json
-    const jsonFiles = files.filter(file => file.endsWith('.json') || file.endsWith('.txt')); // Trello export might be .json or .txt
+app.get('/api/files', async (req, res) => {
+  try {
+    const files = await fs.promises.readdir(uploadDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json') || file.endsWith('.txt'));
 
-    // It might be useful to return more info like date, but filename includes timestamp
-    const fileList = jsonFiles.map(file => {
+    const fileList = await Promise.all(jsonFiles.map(async (file) => {
+      const filepath = path.join(uploadDir, file);
+      let name = null;
+      try {
+        const data = await fs.promises.readFile(filepath, 'utf8');
+        const json = JSON.parse(data);
+        name = json.name;
+      } catch (e) {
+        // Ignore parsing errors, just don't return a name
+      }
+
       return {
         filename: file,
-        uploadedAt: parseInt(file.split('-')[0]) // Extract timestamp assuming format timestamp-name
+        uploadedAt: parseInt(file.split('-')[0]),
+        name: name
       };
-    }).sort((a, b) => b.uploadedAt - a.uploadedAt); // Newest first
+    }));
 
+    fileList.sort((a, b) => b.uploadedAt - a.uploadedAt);
     res.json(fileList);
-  });
+  } catch (err) {
+    console.error('Error reading files:', err);
+    res.status(500).send('Unable to scan directory');
+  }
 });
 
 // API: Get File Content
