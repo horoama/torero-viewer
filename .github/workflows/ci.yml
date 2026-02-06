@@ -1,0 +1,59 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Lint Client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+      - name: Install Client Dependencies
+        run: cd client && npm ci
+      - name: Lint Client
+        run: cd client && npm run lint
+
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: app:test
+
+      - name: Run Container
+        run: docker run -d -p 3001:3001 --name test-app app:test
+
+      - name: Wait for Server
+        run: |
+          echo "Waiting for server..."
+          timeout 30s sh -c 'until curl -s http://localhost:3001 > /dev/null; do sleep 1; done'
+
+      - name: Verify Root Endpoint
+        run: curl --fail http://localhost:3001/
+
+      - name: Run Verification Script
+        run: node verification/check_endpoints.js
+
+      - name: Show Logs on Failure
+        if: failure()
+        run: docker logs test-app
