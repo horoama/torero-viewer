@@ -15,7 +15,7 @@ const Board = () => {
   useEffect(() => {
     const fetchBoardData = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/api/files/${filename}`);
+        const response = await axios.get(`/api/files/${filename}`);
         setBoardData(response.data);
       } catch (err) {
         setError('Failed to load board data.');
