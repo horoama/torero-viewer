@@ -174,10 +174,6 @@ const Board = () => {
                         />
                     ))}
                     {provided.placeholder}
-                    {/* Add List Placeholder */}
-                    <div className="w-trello-list flex-shrink-0 bg-white/20 hover:bg-white/30 rounded-xl p-3 cursor-pointer transition-colors text-white font-semibold text-sm flex items-center gap-2 backdrop-blur-sm h-fit">
-                        <span className="text-lg">＋</span> Add another list
-                    </div>
                     </div>
                 </div>
             )}
@@ -193,6 +189,7 @@ const Board = () => {
           labelsMap={labelsMap}
           membersMap={membersMap}
           checklistsMap={checklistsMap}
+          actions={boardData.actions || []}
         />
       )}
     </div>

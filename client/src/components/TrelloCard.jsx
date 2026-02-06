@@ -1,10 +1,28 @@
 /* client/src/components/TrelloCard.jsx */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Draggable } from '@hello-pangea/dnd';
 
 const TrelloCard = ({ card, onClick, labels, members, index }) => {
   const cardLabels = card.idLabels.map(id => labels[id]).filter(Boolean);
   const cardMembers = card.idMembers.map(id => members[id]).filter(Boolean);
+
+  const [ogImage, setOgImage] = useState(null);
+  const isUrl = /^https?:\/\/[^\s]+$/.test(card.name);
+
+  useEffect(() => {
+    if (isUrl) {
+      axios.get(`/api/ogp`, { params: { url: card.name } })
+        .then(res => {
+          if (res.data.imageUrl) {
+            setOgImage(res.data.imageUrl);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch OGP", err);
+        });
+    }
+  }, [card.name, isUrl]);
 
   // Check if card has any bottom metadata to display
   const hasMetadata = card.desc || card.due || (card.attachments && card.attachments.length > 0) || card.checkItems > 0 || cardMembers.length > 0;
@@ -16,13 +34,16 @@ const TrelloCard = ({ card, onClick, labels, members, index }) => {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className={`bg-white rounded-lg p-2 mb-2 cursor-pointer group relative text-trello-text shadow-trello-card ring-0 hover:ring-2 hover:ring-[#388bff] transition-shadow ${snapshot.isDragging ? 'shadow-2xl rotate-2 z-50 ring-2 ring-[#388bff]' : ''}`}
+          className={`rounded-lg p-2 mb-2 cursor-pointer group relative text-trello-text shadow-trello-card ring-0 hover:ring-2 hover:ring-[#388bff] transition-shadow ${ogImage ? 'bg-no-repeat bg-cover bg-center' : 'bg-white'} ${snapshot.isDragging ? 'shadow-2xl rotate-2 z-50 ring-2 ring-[#388bff]' : ''}`}
           onClick={(e) => {
               if (!e.defaultPrevented) {
                   onClick(card);
               }
           }}
-          style={{ ...provided.draggableProps.style }}
+          style={{
+              ...provided.draggableProps.style,
+              backgroundImage: ogImage ? `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${ogImage})` : undefined
+          }}
         >
           {/* Labels */}
           {cardLabels.length > 0 && (
@@ -41,12 +62,12 @@ const TrelloCard = ({ card, onClick, labels, members, index }) => {
           )}
 
           {/* Title */}
-          <h3 className="text-[#172b4d] text-sm font-normal mb-1 leading-5 break-words">{card.name}</h3>
+          <h3 className={`${ogImage ? 'text-white font-bold drop-shadow-md' : 'text-[#172b4d]'} text-sm font-normal mb-1 leading-5 break-words`}>{card.name}</h3>
 
           {/* Badges / Members */}
           {hasMetadata && (
           <div className="flex justify-between items-end mt-1.5">
-            <div className="flex flex-wrap gap-2 text-[#44546f] text-xs items-center">
+            <div className={`flex flex-wrap gap-2 ${ogImage ? 'text-white/90' : 'text-[#44546f]'} text-xs items-center`}>
                {card.desc && <span title="Description">
                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg>
                </span>}

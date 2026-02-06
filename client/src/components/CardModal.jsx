@@ -3,10 +3,15 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
 
-const CardModal = ({ card, onClose, listName, labelsMap, membersMap, checklistsMap }) => {
+const CardModal = ({ card, onClose, listName, labelsMap, membersMap, checklistsMap, actions = [] }) => {
   const cardLabels = card.idLabels.map(id => labelsMap[id]).filter(Boolean);
   const cardMembers = card.idMembers.map(id => membersMap[id]).filter(Boolean);
   const cardChecklists = card.idChecklists.map(id => checklistsMap[id]).filter(Boolean);
+
+  // Filter comments
+  const cardComments = actions
+    .filter(action => action.type === 'commentCard' && action.data.card.id === card.id)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   // Close when clicking outside content
   const handleOverlayClick = (e) => {
@@ -16,8 +21,8 @@ const CardModal = ({ card, onClose, listName, labelsMap, membersMap, checklistsM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black bg-opacity-60 overflow-y-auto pt-10 pb-10" onClick={handleOverlayClick}>
-      <div className="bg-gray-100 rounded-lg shadow-xl w-full max-w-3xl relative p-6 m-4 min-h-[50vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" onClick={handleOverlayClick}>
+      <div className="bg-gray-100 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative p-6 m-4">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -174,6 +179,37 @@ const CardModal = ({ card, onClose, listName, labelsMap, membersMap, checklistsM
                              </div>
                          </div>
                     ))}
+                </div>
+            )}
+
+            {/* Comments */}
+            {cardComments.length > 0 && (
+                <div className="ml-8">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <span className="mr-2 -ml-8">💬</span> Activity
+                    </h3>
+                    <div className="space-y-4">
+                        {cardComments.map(comment => (
+                            <div key={comment.id} className="flex gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                    {comment.memberCreator ? (
+                                        comment.memberCreator.avatarUrl ?
+                                        <img src={`${comment.memberCreator.avatarUrl}/30.png`} className="w-full h-full rounded-full" alt="" /> :
+                                        (comment.memberCreator.initials || 'U')
+                                    ) : 'U'}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="text-sm">
+                                        <span className="font-bold text-gray-900 mr-2">{comment.memberCreator ? comment.memberCreator.fullName : 'Unknown'}</span>
+                                        <span className="text-gray-500 text-xs">{format(new Date(comment.date), 'PPP p')}</span>
+                                    </div>
+                                    <div className="bg-white p-3 rounded shadow-sm border border-gray-200 mt-1 text-gray-800 text-sm">
+                                        <ReactMarkdown>{comment.data.text}</ReactMarkdown>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
           </div>
