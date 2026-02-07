@@ -10,6 +10,17 @@ const iconv = require('iconv-lite');
 const app = express();
 const PORT = 3001;
 
+// Environment variable for base path
+let basePath = process.env.BASE_PATH || '/';
+// Ensure basePath starts with /
+if (!basePath.startsWith('/')) {
+  basePath = '/' + basePath;
+}
+// Remove trailing slash if present (unless it is just root '/')
+if (basePath !== '/' && basePath.endsWith('/')) {
+  basePath = basePath.slice(0, -1);
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -34,8 +45,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+// Create a router for API
+const apiRouter = express.Router();
+
 // API: Upload JSON
-app.post('/api/upload', upload.single('file'), (req, res) => {
+apiRouter.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).send('No file uploaded.');
   }
@@ -43,7 +57,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 // API: List Files
-app.get('/api/files', async (req, res) => {
+apiRouter.get('/files', async (req, res) => {
   try {
     const files = await fs.promises.readdir(uploadDir);
     const jsonFiles = files.filter(file => file.endsWith('.json') || file.endsWith('.txt'));
@@ -75,7 +89,7 @@ app.get('/api/files', async (req, res) => {
 });
 
 // API: Get File Content
-app.get('/api/files/:filename', (req, res) => {
+apiRouter.get('/files/:filename', (req, res) => {
   const filepath = path.join(uploadDir, req.params.filename);
   if (!fs.existsSync(filepath)) {
     return res.status(404).send('File not found');
@@ -95,7 +109,7 @@ app.get('/api/files/:filename', (req, res) => {
 });
 
 // API: Get OGP Image and Metadata
-app.get('/api/ogp', async (req, res) => {
+apiRouter.get('/ogp', async (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) {
     return res.status(400).send('URL is required');
@@ -193,14 +207,48 @@ app.get('/api/ogp', async (req, res) => {
   }
 });
 
+// Mount API Router
+// Construct API path carefully to avoid double slashes or missing slashes
+const apiPath = basePath === '/' ? '/api' : `${basePath}/api`;
+app.use(apiPath, apiRouter);
+
 // Serve static files from client/dist
-app.use(express.static(path.join(__dirname, '../client/dist')));
+// Mount at basePath
+app.use(basePath, express.static(path.join(__dirname, '../client/dist'), { index: false }));
 
 // Handle React routing, return all requests to React app
-app.get('{/*splat}', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+// Inject BASE_PATH into index.html
+// Match everything under basePath
+// Using RegExp for Express 5 compatibility
+const escapedBasePath = basePath === '/' ? '' : basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const wildcardRegex = new RegExp(`^${escapedBasePath}(/.*)?$`);
+
+app.get(wildcardRegex, (req, res) => {
+  const indexPath = path.join(__dirname, '../client/dist', 'index.html');
+
+  // If file doesn't exist (e.g. build not done yet), handle gracefully or let it error
+  if (!fs.existsSync(indexPath)) {
+      return res.status(404).send('App not built or index.html missing');
+  }
+
+  fs.readFile(indexPath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading index.html:', err);
+      return res.status(500).send('Server Error');
+    }
+
+    // Replace placeholder with actual base path
+    // We use a regex or string replace. The placeholder in index.html is 'window.BASE_PATH = "/";'
+    const modifiedHtml = data.replace(
+      'window.BASE_PATH = "/";',
+      `window.BASE_PATH = "${basePath}";`
+    );
+
+    res.send(modifiedHtml);
+  });
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Base Path: ${basePath}`);
 });

@@ -4,8 +4,10 @@ import Home from './pages/Home';
 import Board from './pages/Board';
 
 function App() {
+  const basePath = window.BASE_PATH || '/';
+
   return (
-    <Router>
+    <Router basename={basePath}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/board/:filename" element={<Board />} />
