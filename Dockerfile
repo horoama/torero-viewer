@@ -23,5 +23,7 @@ COPY server/ ./
 # Copy built frontend assets
 COPY --from=builder /app/client/dist /app/client/dist
 
+ENV BASE_PATH=/
+
 EXPOSE 3001
 CMD ["node", "index.js"]
